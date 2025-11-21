@@ -17,6 +17,7 @@ import { PremiumDocumentUnlock } from "@/components/PremiumDocumentUnlock";
 import { useSignedPdfUrl } from "@/hooks/useSignedPdfUrl";
 import { PDFViewer } from "@/components/PDFViewer";
 import { DocxViewer } from "@/components/DocxViewer";
+import { ImageViewer } from "@/components/ImageViewer";
 import { DocumentComments } from "@/components/DocumentComments";
 
 function DocumentViewContent() {
@@ -93,18 +94,28 @@ function DocumentViewContent() {
   );
 
   // Helper function to detect file type
-  const getFileType = (url: string | null | undefined): 'pdf' | 'docx' | 'other' => {
+  const getFileType = (url: string | null | undefined): 'pdf' | 'docx' | 'image' | 'other' => {
     if (!url) return 'other';
     // Remove query params and check extension
     const urlWithoutParams = url.split('?')[0].toLowerCase();
+    
+    // PDF files
     if (urlWithoutParams.endsWith('.pdf')) return 'pdf';
+    
+    // Word documents
     if (urlWithoutParams.endsWith('.docx') || urlWithoutParams.endsWith('.doc')) return 'docx';
+    
+    // Image files
+    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.ico'];
+    if (imageExtensions.some(ext => urlWithoutParams.endsWith(ext))) return 'image';
+    
     return 'other';
   };
 
   const fileType = document?.pdf_url ? getFileType(document.pdf_url) : 'other';
   const isDocumentPdf = fileType === 'pdf';
   const isDocumentDocx = fileType === 'docx';
+  const isDocumentImage = fileType === 'image';
 
   // Memoize document object for PDFViewer to prevent re-renders
   const pdfViewerDocument = useMemo(() => {
@@ -124,6 +135,16 @@ function DocumentViewContent() {
   }, [document?.id, document?.title, signedUrl, document?.category]);
 
   const docxViewerDocument = useMemo(() => {
+    if (!document || !signedUrl) return null;
+    return {
+      id: document.id,
+      title: document.title,
+      pdfUrl: signedUrl,
+      category: document.category,
+    };
+  }, [document?.id, document?.title, signedUrl, document?.category]);
+
+  const imageViewerDocument = useMemo(() => {
     if (!document || !signedUrl) return null;
     return {
       id: document.id,
@@ -531,6 +552,10 @@ function DocumentViewContent() {
                     ) : isDocumentDocx ? (
                       <DocxViewer 
                         document={docxViewerDocument}
+                      />
+                    ) : isDocumentImage ? (
+                      <ImageViewer 
+                        document={imageViewerDocument}
                       />
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center">

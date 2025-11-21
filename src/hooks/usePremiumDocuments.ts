@@ -84,13 +84,60 @@ export function useCanAccessPremium() {
         .eq("status", "active")
         .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error("[useCanAccessPremium] Erro ao verificar assinatura:", error);
+        throw error;
+      }
       
-      // Planos que podem acessar conteúdo premium
-      const premiumPlans = ["Premium", "Advanced", "Avançado"];
-      const planName = (data?.subscription_plans as any)?.name || "";
+      // Se não há assinatura ativa, retorna false
+      if (!data || !data.subscription_plans) {
+        console.log("[useCanAccessPremium] Nenhuma assinatura ativa encontrada");
+        return false;
+      }
+
+      const planName = (data.subscription_plans as any)?.name || "";
       
-      return premiumPlans.includes(planName);
+      // Normalizar nome do plano para comparação (case-insensitive, remover espaços extras)
+      const normalizedPlanName = planName.toLowerCase().trim();
+      
+      // Planos gratuitos que NÃO podem acessar premium
+      const freePlans = ["free", "gratuito", "plano free", "plano gratuito"];
+      if (freePlans.some(freePlan => normalizedPlanName === freePlan || normalizedPlanName.includes(freePlan))) {
+        console.log("[useCanAccessPremium] Plano gratuito detectado:", planName);
+        return false;
+      }
+      
+      // Planos premium conhecidos (case-insensitive)
+      const premiumPlanNames = [
+        "premium",
+        "advanced",
+        "avançado",
+        "assinatura dr. ho",
+        "assinatura dr ho",
+        "dr. ho",
+        "dr ho",
+        "enterprise",
+        "empresarial"
+      ];
+      
+      // Verificar se o plano está na lista de premium OU se não é gratuito (considerar premium por padrão)
+      const isPremiumPlan = premiumPlanNames.some(premiumPlan => 
+        normalizedPlanName === premiumPlan || 
+        normalizedPlanName.includes(premiumPlan)
+      );
+      
+      // Se não é plano gratuito e não está na lista explícita, considerar premium por padrão
+      // (assumindo que qualquer plano pago é premium)
+      const result = isPremiumPlan || normalizedPlanName.length > 0;
+      
+      console.log("[useCanAccessPremium] Verificação:", {
+        planName,
+        normalizedPlanName,
+        isPremiumPlan,
+        result
+      });
+      
+      return result;
     },
     enabled: !!user?.id,
   });
